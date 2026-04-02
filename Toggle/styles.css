@@ -1,0 +1,51 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+  background: #000;
+  display: grid;
+  place-items: center;
+}
+
+#toggle {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: #edff03;
+  cursor: pointer;
+  position: relative;
+  outline: none;
+  transition: transform 0.5s ease;
+  display: grid;
+  place-items: center;
+}
+
+#toggle .icon {
+  width: 0;
+  height: 0;
+  border-top: 16px solid transparent;
+  border-bottom: 16px solid transparent;
+  border-left: 25px solid #9ba4b3;
+}
+
+#toggle.animate {
+  animation: spin-and-slide 5s ease-in-out forwards;
+}
+
+@keyframes spin-and-slide {
+  0% {
+    transform: translateX(0) rotate(0deg);
+  }
+  40% {
+    transform: translateX(110vw) rotate(720deg);
+  }
+  40.01% {
+    transform: translateX(-110vw) rotate(720deg);
+  }
+  100% {
+    transform: translateX(0) rotate(1440deg);
+  }
+}
