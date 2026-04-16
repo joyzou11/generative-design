@@ -346,6 +346,7 @@ async function loadQuotesFromSupabase() {
     }
 
     const ordered = [...data].reverse();
+    let added = 0;
     ordered.forEach((item, index) => {
       if (!item.text) return;
       addSeedCard(
@@ -355,9 +356,13 @@ async function loadQuotesFromSupabase() {
         },
         index
       );
+      added += 1;
     });
-    render();
-    return true;
+    if (added > 0) {
+      render();
+      return true;
+    }
+    return false;
   } catch (error) {
     console.error('Supabase request crashed, using fallback quotes:', error);
     return false;
@@ -583,13 +588,14 @@ async function init() {
   updateZoomUI();
   quoteInput.focus();
 
-  const loadedFromSupabase = await loadQuotesFromSupabase();
-  if (!loadedFromSupabase) {
-    fallbackQuotes.forEach((item, index) => {
-      addSeedCard(item, index);
-    });
-    render();
-  }
+  // Always keep the original landing experience.
+  fallbackQuotes.forEach((item, index) => {
+    addSeedCard(item, index);
+  });
+  render();
+
+  // Then merge persisted user-generated cards from Supabase.
+  await loadQuotesFromSupabase();
 }
 
 init();
