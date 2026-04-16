@@ -2,7 +2,6 @@ const app = document.getElementById('app');
 const canvasLayer = document.getElementById('canvas');
 const quoteInput = document.getElementById('quoteInput');
 const authorInput = document.getElementById('authorInput');
-const composerForm = document.getElementById('composerForm');
 const send = document.getElementById('send');
 const zoomToggle = document.getElementById('zoomToggle');
 const zoomStateLabel = document.getElementById('zoomStateLabel');
@@ -76,11 +75,13 @@ function randomPair() {
   return colorPairs[Math.floor(Math.random() * colorPairs.length)];
 }
 
+function clamp(value, min, max) {
+  return Math.min(max, Math.max(min, value));
+}
+
 function worldToScreen(x, y, z) {
   const dz = z - camera.z;
-  if (dz <= 40) {
-    return null;
-  }
+  if (dz <= 40) return null;
 
   const perspective = (projection.focalLength / dz) * camera.zoom;
   return {
@@ -100,11 +101,25 @@ function screenToWorldAtZ(x, y, z) {
   };
 }
 
+function wrapChars(text, maxWidth) {
+  const lines = [];
+  let line = '';
+  for (const char of Array.from(text.trim())) {
+    const proposal = line + char;
+    if (!line || measureCtx.measureText(proposal).width <= maxWidth) {
+      line = proposal;
+    } else {
+      lines.push(line);
+      line = char;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
 function wrapTextToWidth(text, maxWidth) {
   const words = text.trim().split(/\s+/).filter(Boolean);
-  if (words.length <= 1) {
-    return wrapChars(text.trim(), maxWidth);
-  }
+  if (words.length <= 1) return wrapChars(text.trim(), maxWidth);
 
   const lines = [];
   let current = '';
@@ -130,36 +145,13 @@ function wrapTextToWidth(text, maxWidth) {
     }
   }
 
-  if (current) {
-    lines.push(current);
-  }
-
+  if (current) lines.push(current);
   return lines.length ? lines : wrapChars(text.trim(), maxWidth);
-}
-
-function wrapChars(text, maxWidth) {
-  const lines = [];
-  const chars = Array.from(text.trim());
-  let line = '';
-
-  for (const char of chars) {
-    const proposal = line + char;
-    if (!line || measureCtx.measureText(proposal).width <= maxWidth) {
-      line = proposal;
-    } else {
-      lines.push(line);
-      line = char;
-    }
-  }
-
-  if (line) lines.push(line);
-  return lines;
 }
 
 function computeCardLayout(rawText) {
   const text = rawText.trim();
   let side = Math.max(MIN_SIDE, Math.min(MAX_SIDE, 160 + Math.sqrt(text.length) * 62));
-
   const lineHeightPx = FONT_SIZE * LINE_HEIGHT;
 
   for (let i = 0; i < 24; i += 1) {
@@ -173,26 +165,20 @@ function computeCardLayout(rawText) {
     const required = Math.max(MIN_SIDE, needsWidth, needsHeight);
 
     if (required <= side + 0.5 || side >= MAX_SIDE) {
-      return {
-        side: Math.min(MAX_SIDE, Math.ceil(Math.max(side, required))),
-        lines
-      };
+      return { side: Math.min(MAX_SIDE, Math.ceil(Math.max(side, required))), lines };
     }
 
     side = Math.min(MAX_SIDE, required + 2);
   }
 
   const finalMaxTextWidth = Math.max(20, side - CARD_PADDING * 2);
-  return {
-    side: Math.ceil(side),
-    lines: wrapTextToWidth(text, finalMaxTextWidth)
-  };
+  return { side: Math.ceil(side), lines: wrapTextToWidth(text, finalMaxTextWidth) };
 }
 
 function render() {
   const frag = document.createDocumentFragment();
-
   const drawList = [...cards].sort((a, b) => a.z - b.z);
+
   for (const card of drawList) {
     const screen = worldToScreen(card.x, card.y, card.z);
     if (!screen) continue;
@@ -212,7 +198,6 @@ function render() {
     cardEl.style.filter = blurPx > 0 ? `blur(${blurPx.toFixed(2)}px)` : 'none';
     cardEl.style.boxShadow = `0 ${shadowY}px ${shadowBlur}px rgba(0, 0, 0, 0.14)`;
     cardEl.style.transform = `translate(${screen.x}px, ${screen.y}px) scale(${screen.scale})`;
-
     cardEl.textContent = card.lines.join('\n');
 
     const q1 = document.createElement('span');
@@ -241,8 +226,49 @@ function render() {
   canvasLayer.replaceChildren(frag);
 }
 
+function addCard() {
+  const value = quoteInput.value.trim();
+  if (!value) return;
+  const author = authorInput.value.trim();
+
+  const layout = computeCardLayout(value);
+  const pair = randomPair();
+
+  const z = Math.round(depthConfig.farZ + Math.random() * (depthConfig.nearZ - depthConfig.farZ));
+  const centerWorld = screenToWorldAtZ(window.innerWidth / 2, window.innerHeight / 2, z);
+  const depthSpread = clamp((z - depthConfig.farZ) / (depthConfig.nearZ - depthConfig.farZ), 0.2, 1);
+  const jitterX = (Math.random() - 0.5) * (320 + depthSpread * 380);
+  const jitterY = (Math.random() - 0.5) * (240 + depthSpread * 300);
+
+  cards.push({
+    id: nextId++,
+    text: value,
+    author,
+    lines: layout.lines,
+    size: layout.side,
+    bg: pair.bg,
+    fg: pair.fg,
+    z,
+    x: centerWorld.x + jitterX - layout.side / 2,
+    y: centerWorld.y + jitterY - layout.side / 2
+  });
+
+  if (supabase) {
+    saveQuoteToSupabase(value, author).catch((error) => {
+      if (!hasShownSyncWarning) {
+        hasShownSyncWarning = true;
+        alert(`Sync failed, saved on screen only: ${error.message}`);
+      }
+    });
+  }
+
+  quoteInput.value = '';
+  render();
+}
+
 async function saveQuoteToSupabase(text, author) {
   if (!supabase) return;
+
   const withTimeout = (promise, ms) =>
     Promise.race([
       promise,
@@ -263,110 +289,6 @@ async function saveQuoteToSupabase(text, author) {
 
   if (error) {
     throw new Error(error.message);
-  }
-}
-
-function addCardToCanvas(text, author) {
-  const layout = computeCardLayout(text);
-  const pair = randomPair();
-
-  // Spawn cards across depth layers to emphasize 3D space.
-  const z = Math.round(depthConfig.farZ + Math.random() * (depthConfig.nearZ - depthConfig.farZ));
-  const centerWorld = screenToWorldAtZ(window.innerWidth / 2, window.innerHeight / 2, z);
-  const depthSpread = clamp((z - depthConfig.farZ) / (depthConfig.nearZ - depthConfig.farZ), 0.2, 1);
-  const jitterX = (Math.random() - 0.5) * (320 + depthSpread * 380);
-  const jitterY = (Math.random() - 0.5) * (240 + depthSpread * 300);
-
-  cards.push({
-    id: nextId++,
-    text,
-    author,
-    lines: layout.lines,
-    size: layout.side,
-    bg: pair.bg,
-    fg: pair.fg,
-    z,
-    x: centerWorld.x + jitterX - layout.side / 2,
-    y: centerWorld.y + jitterY - layout.side / 2
-  });
-
-  render();
-}
-
-function addCard() {
-  const value = quoteInput.value.trim();
-  if (!value) return;
-  const author = authorInput.value.trim();
-
-  // Optimistic UI: always add locally first.
-  addCardToCanvas(value, author);
-
-  if (supabase) {
-    saveQuoteToSupabase(value, author).catch((error) => {
-      if (!hasShownSyncWarning) {
-        hasShownSyncWarning = true;
-        alert(`Supabase sync failed, saved locally only: ${error.message}`);
-      }
-    });
-  }
-
-  quoteInput.value = '';
-  authorInput.value = '';
-}
-
-async function loadQuotesFromSupabase() {
-  if (!supabase) {
-    return false;
-  }
-
-  const withTimeout = (promise, ms) =>
-    Promise.race([
-      promise,
-      new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), ms);
-      })
-    ]);
-
-  try {
-    const { data, error } = await withTimeout(
-      supabase
-        .from(SUPABASE_TABLE)
-        .select('text, author, created_at')
-        .order('created_at', { ascending: false })
-        .limit(120),
-      4000
-    );
-
-    if (error) {
-      console.error('Failed to load quotes from Supabase:', error.message);
-      return false;
-    }
-
-    if (!data || data.length === 0) {
-      return false;
-    }
-
-    const ordered = [...data].reverse();
-    let added = 0;
-    ordered.forEach((item, index) => {
-      if (!item.text) return;
-      addSeedCard(
-        {
-          text: item.text,
-          author: item.author || ''
-        },
-        index
-      );
-      added += 1;
-    });
-    if (added > 0) {
-      render();
-      return true;
-    }
-    return false;
-  } catch (error) {
-    console.error('Supabase request crashed, using fallback quotes:', error);
-    return false;
   }
 }
 
@@ -397,6 +319,7 @@ function addSeedCard(item, index) {
   const layout = computeCardLayout(item.text);
   const pair = randomPair();
   const slot = seedSlots[index % seedSlots.length];
+
   let z = slot.z + Math.round((Math.random() - 0.5) * 520);
   z = clamp(z, depthConfig.farZ + 140, depthConfig.nearZ - 120);
   let world = screenToWorldAtZ(window.innerWidth * slot.x, window.innerHeight * slot.y, z);
@@ -408,12 +331,14 @@ function addSeedCard(item, index) {
     const candidate = screenToWorldAtZ(rx, ry, z);
     const a = worldToScreen(candidate.x, candidate.y, z);
     if (!a) continue;
+
     const conflict = cards.some((card) => {
       const b = worldToScreen(card.x, card.y, card.z);
       if (!b) return false;
       const minDist = (layout.side * a.scale + card.size * b.scale) * 0.34;
       return Math.hypot(a.x - b.x, a.y - b.y) < minDist;
     });
+
     if (!conflict) {
       world = candidate;
       break;
@@ -440,10 +365,6 @@ function updateZoomUI() {
   zoomStateLabel.textContent = `Scroll to zoom ${zoomEnabled ? 'ON' : 'OFF'}`;
 }
 
-function clamp(value, min, max) {
-  return Math.min(max, Math.max(min, value));
-}
-
 function zoomAt(clientX, clientY, deltaY) {
   const before = screenToWorldAtZ(clientX, clientY, 0);
   const nextZ = clamp(camera.z - deltaY * 2.8, -9000, 1700);
@@ -455,19 +376,7 @@ function zoomAt(clientX, clientY, deltaY) {
   camera.y += before.y - after.y;
 }
 
-if (composerForm) {
-  composerForm.addEventListener('submit', (event) => {
-    event.preventDefault();
-    addCard();
-  });
-} else {
-  send.addEventListener('click', addCard);
-}
-
-send.addEventListener('click', (event) => {
-  event.preventDefault();
-  addCard();
-});
+send.addEventListener('click', addCard);
 quoteInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     event.preventDefault();
@@ -484,6 +393,7 @@ zoomToggle.addEventListener('click', () => {
   zoomEnabled = !zoomEnabled;
   updateZoomUI();
 });
+
 app.addEventListener(
   'wheel',
   (event) => {
@@ -497,12 +407,9 @@ app.addEventListener(
 );
 
 app.addEventListener('pointerdown', (event) => {
-  if (event.target.closest('.composer') || event.target.closest('.zoom-control')) {
-    return;
-  }
+  if (event.target.closest('.composer') || event.target.closest('.zoom-control')) return;
 
   const cardEl = event.target.closest('.card');
-
   if (cardEl) {
     const id = Number(cardEl.dataset.id);
     const card = cards.find((item) => item.id === id);
@@ -572,7 +479,7 @@ app.addEventListener('pointercancel', () => {
 
 window.addEventListener('resize', render);
 
-const fallbackQuotes = [
+const seedQuotes = [
   { text: 'You are not a mess. You are a limited edition disaster.', author: '@unspirational' },
   { text: 'If opportunity does not knock, maybe everyone changed their number.', author: '@unspirational' },
   { text: 'Your comfort zone is a beautiful place to stay forever.', author: '@unspirational' },
@@ -595,20 +502,54 @@ const fallbackQuotes = [
   { text: 'You are doing great for someone winging everything.', author: '@unspirational' }
 ];
 
-async function init() {
-  quoteInput.value = '';
-  authorInput.value = '';
-  updateZoomUI();
-  quoteInput.focus();
+async function loadPersistedQuotes() {
+  if (!supabase) return;
 
-  // Always keep the original landing experience.
-  fallbackQuotes.forEach((item, index) => {
-    addSeedCard(item, index);
-  });
-  render();
+  const withTimeout = (promise, ms) =>
+    Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), ms);
+      })
+    ]);
 
-  // Then merge persisted user-generated cards from Supabase.
-  await loadQuotesFromSupabase();
+  try {
+    const { data, error } = await withTimeout(
+      supabase
+        .from(SUPABASE_TABLE)
+        .select('text, author, created_at')
+        .order('created_at', { ascending: true })
+        .limit(300),
+      4000
+    );
+    if (error || !data || data.length === 0) return;
+
+    const seedSet = new Set(seedQuotes.map((item) => `${item.text}__${item.author || ''}`));
+    let offset = seedQuotes.length;
+    data.forEach((item) => {
+      if (!item.text) return;
+      const signature = `${item.text}__${item.author || ''}`;
+      if (seedSet.has(signature)) return;
+      addSeedCard(
+        {
+          text: item.text,
+          author: item.author || ''
+        },
+        offset
+      );
+      offset += 1;
+    });
+    render();
+  } catch (_error) {
+    // Keep the Gallery behavior even if network fails.
+  }
 }
 
-init();
+seedQuotes.forEach((item, index) => addSeedCard(item, index));
+
+quoteInput.value = '';
+authorInput.value = '';
+updateZoomUI();
+quoteInput.focus();
+render();
+loadPersistedQuotes();
