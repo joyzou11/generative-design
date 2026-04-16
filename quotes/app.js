@@ -2,6 +2,7 @@ const app = document.getElementById('app');
 const canvasLayer = document.getElementById('canvas');
 const quoteInput = document.getElementById('quoteInput');
 const authorInput = document.getElementById('authorInput');
+const composerForm = document.getElementById('composerForm');
 const send = document.getElementById('send');
 const zoomToggle = document.getElementById('zoomToggle');
 const zoomStateLabel = document.getElementById('zoomStateLabel');
@@ -454,7 +455,19 @@ function zoomAt(clientX, clientY, deltaY) {
   camera.y += before.y - after.y;
 }
 
-send.addEventListener('click', addCard);
+if (composerForm) {
+  composerForm.addEventListener('submit', (event) => {
+    event.preventDefault();
+    addCard();
+  });
+} else {
+  send.addEventListener('click', addCard);
+}
+
+send.addEventListener('click', (event) => {
+  event.preventDefault();
+  addCard();
+});
 quoteInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     event.preventDefault();

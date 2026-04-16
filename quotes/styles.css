@@ -1,6 +1,5 @@
 :root {
   --bg: #d9d9dd;
-  --panel: #c4c4c7;
   --neon: #d8ef3f;
 }
 
@@ -42,7 +41,6 @@ body {
   color: var(--neon);
   font-size: clamp(28px, 3.6vw, 62px);
   font-weight: 700;
-  letter-spacing: 0;
   line-height: 1;
   text-shadow:
     2px 0 0 #5f5f63,
@@ -73,7 +71,6 @@ body {
   transform-origin: top left;
   cursor: move;
   touch-action: none;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
   mix-blend-mode: difference;
 }
 
@@ -106,15 +103,45 @@ body {
   bottom: -8px;
 }
 
-.composer {
+.zoom-control {
   position: absolute;
-  left: 50%;
-  bottom: 18px;
-  transform: translateX(-50%);
+  right: 18px;
+  top: 16px;
   display: flex;
   align-items: center;
-  gap: 14px;
-  width: min(94vw, 1120px);
+  gap: 8px;
+  color: rgba(150, 150, 150, 0.65);
+  font: 700 18px/1 Helvetica, Arial, sans-serif;
+}
+
+.zoom-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(210, 210, 210, 0.95);
+  cursor: pointer;
+  padding: 2px;
+}
+
+.zoom-switch .knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: #ededed;
+  border-radius: 2px;
+  transition: transform 120ms ease;
+}
+
+.zoom-switch.on {
+  background: #c8c8ca;
+}
+
+.zoom-switch.on .knob {
+  transform: translateX(22px);
 }
 
 .hint-text {
@@ -126,6 +153,17 @@ body {
   font: 700 14px/1 Helvetica, Arial, sans-serif;
   pointer-events: none;
   white-space: nowrap;
+}
+
+.composer {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: min(94vw, 1120px);
 }
 
 #quoteInput,
@@ -173,47 +211,6 @@ body {
 
 #send:active {
   transform: translateY(1px);
-}
-
-.zoom-control {
-  position: absolute;
-  right: 18px;
-  top: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: rgba(150, 150, 150, 0.65);
-  font: 700 18px/1 Helvetica, Arial, sans-serif;
-}
-
-.zoom-switch {
-  position: relative;
-  width: 44px;
-  height: 24px;
-  border: none;
-  border-radius: 4px;
-  background: rgba(210, 210, 210, 0.95);
-  cursor: pointer;
-  padding: 2px;
-}
-
-.zoom-switch .knob {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 16px;
-  height: 16px;
-  background: #ededed;
-  border-radius: 2px;
-  transition: transform 120ms ease;
-}
-
-.zoom-switch.on {
-  background: #c8c8ca;
-}
-
-.zoom-switch.on .knob {
-  transform: translateX(22px);
 }
 
 @media (max-width: 720px) {
