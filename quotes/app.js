@@ -5,6 +5,13 @@ const authorInput = document.getElementById('authorInput');
 const send = document.getElementById('send');
 const zoomToggle = document.getElementById('zoomToggle');
 const zoomStateLabel = document.getElementById('zoomStateLabel');
+const SUPABASE_URL = (window.__SUPABASE_URL__ || '').trim();
+const SUPABASE_ANON_KEY = (window.__SUPABASE_ANON_KEY__ || '').trim();
+const SUPABASE_TABLE = 'quotes';
+const supabase =
+  window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
 
 const FONT_SIZE = 40;
 const FONT_WEIGHT = 700;
@@ -41,6 +48,7 @@ const colorPairs = [
 const cards = [];
 let nextId = 1;
 let zoomEnabled = true;
+let isSaving = false;
 
 const camera = {
   x: 0,
@@ -232,10 +240,38 @@ function render() {
   canvasLayer.replaceChildren(frag);
 }
 
-function addCard() {
+async function saveQuoteToSupabase(text, author) {
+  if (!supabase) return;
+  const { error } = await supabase.from(SUPABASE_TABLE).insert([
+    {
+      text,
+      author: author || null
+    }
+  ]);
+  if (error) {
+    throw new Error(error.message);
+  }
+}
+
+async function addCard() {
+  if (isSaving) return;
   const value = quoteInput.value.trim();
   if (!value) return;
   const author = authorInput.value.trim();
+
+  isSaving = true;
+  send.disabled = true;
+  send.setAttribute('aria-busy', 'true');
+
+  try {
+    await saveQuoteToSupabase(value, author);
+  } catch (error) {
+    alert(`Save failed: ${error.message}`);
+    isSaving = false;
+    send.disabled = false;
+    send.removeAttribute('aria-busy');
+    return;
+  }
 
   const layout = computeCardLayout(value);
   const pair = randomPair();
@@ -261,7 +297,11 @@ function addCard() {
   });
 
   quoteInput.value = '';
+  authorInput.value = '';
   render();
+  isSaving = false;
+  send.disabled = false;
+  send.removeAttribute('aria-busy');
 }
 
 const seedSlots = [
@@ -347,6 +387,40 @@ function zoomAt(clientX, clientY, deltaY) {
   const after = screenToWorldAtZ(clientX, clientY, 0);
   camera.x += before.x - after.x;
   camera.y += before.y - after.y;
+}
+
+async function loadQuotesFromSupabase() {
+  if (!supabase) {
+    return false;
+  }
+
+  const { data, error } = await supabase
+    .from(SUPABASE_TABLE)
+    .select('text, author, created_at')
+    .order('created_at', { ascending: false })
+    .limit(120);
+
+  if (error) {
+    console.error('Failed to load quotes from Supabase:', error.message);
+    return false;
+  }
+
+  if (!data || data.length === 0) {
+    return false;
+  }
+
+  const ordered = [...data].reverse();
+  ordered.forEach((item, index) => {
+    addSeedCard(
+      {
+        text: item.text,
+        author: item.author || ''
+      },
+      index
+    );
+  });
+  render();
+  return true;
 }
 
 send.addEventListener('click', addCard);
@@ -454,7 +528,7 @@ app.addEventListener('pointercancel', () => {
 
 window.addEventListener('resize', render);
 
-[
+const fallbackQuotes = [
   { text: 'You are not a mess. You are a limited edition disaster.', author: '@unspirational' },
   { text: 'If opportunity does not knock, maybe everyone changed their number.', author: '@unspirational' },
   { text: 'Your comfort zone is a beautiful place to stay forever.', author: '@unspirational' },
@@ -475,12 +549,21 @@ window.addEventListener('resize', render);
   { text: 'Do it scared, tired, and slightly confused.', author: '@unspirational' },
   { text: 'Motivation is temporary. Deadlines are forever.', author: '@unspirational' },
   { text: 'You are doing great for someone winging everything.', author: '@unspirational' }
-].forEach((item, index) => {
-  addSeedCard(item, index);
-});
+];
 
-quoteInput.value = '';
-authorInput.value = '';
-updateZoomUI();
-quoteInput.focus();
-render();
+async function init() {
+  quoteInput.value = '';
+  authorInput.value = '';
+  updateZoomUI();
+  quoteInput.focus();
+
+  const loadedFromSupabase = await loadQuotesFromSupabase();
+  if (!loadedFromSupabase) {
+    fallbackQuotes.forEach((item, index) => {
+      addSeedCard(item, index);
+    });
+    render();
+  }
+}
+
+init();
