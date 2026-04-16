@@ -1,0 +1,259 @@
+:root {
+  --bg: #d9d9dd;
+  --neon: #d8ef3f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  font-family: Helvetica, Arial, sans-serif;
+  user-select: none;
+}
+
+#app {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 30%),
+    radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0) 28%),
+    var(--bg);
+  cursor: grab;
+}
+
+#app.panning {
+  cursor: grabbing;
+}
+
+.logo {
+  position: absolute;
+  top: 14px;
+  left: 12px;
+  color: var(--neon);
+  font-size: clamp(28px, 3.6vw, 62px);
+  font-weight: 700;
+  line-height: 1;
+  text-shadow:
+    2px 0 0 #5f5f63,
+    -2px 0 0 #5f5f63,
+    0 2px 0 #5f5f63,
+    0 -2px 0 #5f5f63;
+  pointer-events: none;
+}
+
+.canvas-layer {
+  position: absolute;
+  inset: 0;
+}
+
+.card {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: Helvetica, Arial, sans-serif;
+  font-weight: 700;
+  font-size: 40px;
+  line-height: 1.08;
+  padding: 16px;
+  border-radius: 2px;
+  white-space: pre-line;
+  transform-origin: top left;
+  cursor: move;
+  touch-action: none;
+  mix-blend-mode: difference;
+}
+
+.card-author {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  font: italic 700 14px/1 Helvetica, Arial, sans-serif;
+  opacity: 0.95;
+  pointer-events: none;
+}
+
+.quote {
+  position: absolute;
+  font-family: Helvetica, Arial, sans-serif;
+  font-weight: 700;
+  font-size: 42px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+.quote.left {
+  top: 2px;
+  left: 8px;
+}
+
+.quote.right {
+  right: 8px;
+  bottom: -8px;
+}
+
+.zoom-control {
+  position: absolute;
+  right: 18px;
+  top: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(150, 150, 150, 0.65);
+  font: 700 18px/1 Helvetica, Arial, sans-serif;
+}
+
+.zoom-switch {
+  position: relative;
+  width: 44px;
+  height: 24px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(210, 210, 210, 0.95);
+  cursor: pointer;
+  padding: 2px;
+}
+
+.zoom-switch .knob {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  background: #ededed;
+  border-radius: 2px;
+  transition: transform 120ms ease;
+}
+
+.zoom-switch.on {
+  background: #c8c8ca;
+}
+
+.zoom-switch.on .knob {
+  transform: translateX(22px);
+}
+
+.hint-text {
+  position: absolute;
+  left: 50%;
+  bottom: 86px;
+  transform: translateX(-50%);
+  color: rgba(120, 120, 120, 0.45);
+  font: 700 14px/1 Helvetica, Arial, sans-serif;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.composer {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: min(94vw, 1120px);
+}
+
+#quoteInput,
+#authorInput {
+  height: 40px;
+  border: none;
+  border-radius: 6px;
+  outline: none;
+  background: rgba(198, 198, 200, 0.95);
+  color: var(--neon);
+  font: 700 29px/1 Helvetica, Arial, sans-serif;
+  padding: 0 16px;
+}
+
+#quoteInput {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#authorInput {
+  width: min(260px, 28vw);
+}
+
+#quoteInput::placeholder,
+#authorInput::placeholder {
+  color: rgba(216, 239, 63, 0.6);
+}
+
+.by-label {
+  color: rgba(110, 110, 110, 0.5);
+  font: 700 16px/1 Helvetica, Arial, sans-serif;
+}
+
+#send {
+  width: 56px;
+  height: 40px;
+  border: none;
+  border-radius: 0;
+  background: var(--neon);
+  color: #7f7f7f;
+  font: 700 38px/1 Helvetica, Arial, sans-serif;
+  cursor: pointer;
+  padding: 0;
+}
+
+#send:active {
+  transform: translateY(1px);
+}
+
+@media (max-width: 720px) {
+  .logo {
+    font-size: 22px;
+    top: 16px;
+  }
+
+  .zoom-control {
+    font-size: 14px;
+    right: 10px;
+    top: 12px;
+  }
+
+  .composer {
+    gap: 8px;
+    bottom: 10px;
+    width: 96vw;
+  }
+
+  .hint-text {
+    bottom: 62px;
+    font-size: 11px;
+  }
+
+  #quoteInput,
+  #authorInput {
+    font-size: 22px;
+    height: 38px;
+  }
+
+  #authorInput {
+    width: 30vw;
+    min-width: 90px;
+  }
+
+  .by-label {
+    font-size: 14px;
+  }
+
+  #send {
+    width: 38px;
+    height: 38px;
+    font-size: 24px;
+  }
+}

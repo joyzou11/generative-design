@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Uninsprinational Quotes</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <div class="logo">“Uninsprinational Quotes”</div>
+      <div class="canvas-layer" id="canvas"></div>
+
+      <div class="zoom-control">
+        <span id="zoomStateLabel">Scroll to zoom ON</span>
+        <button
+          id="zoomToggle"
+          class="zoom-switch on"
+          aria-label="Toggle scroll zoom"
+          role="switch"
+          aria-checked="true"
+        >
+          <span class="knob"></span>
+        </button>
+      </div>
+
+      <div class="hint-text">Click and drag to move / Scroll to zoom</div>
+      <div class="composer">
+        <input id="quoteInput" type="text" placeholder="Tpye your quotes" maxlength="180" />
+        <span class="by-label">by</span>
+        <input id="authorInput" type="text" placeholder="Who" maxlength="40" />
+        <button id="send" aria-label="Send">↑</button>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
