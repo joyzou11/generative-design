@@ -446,7 +446,17 @@ function zoomAt(clientX, clientY, deltaY) {
   camera.y += before.y - after.y;
 }
 
-send.addEventListener('click', addCard);
+function submitFromComposer(event) {
+  if (event) {
+    event.preventDefault();
+    event.stopPropagation();
+  }
+  addCard();
+}
+
+send.addEventListener('click', submitFromComposer);
+send.addEventListener('pointerup', submitFromComposer);
+send.addEventListener('touchend', submitFromComposer, { passive: false });
 quoteInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     event.preventDefault();
