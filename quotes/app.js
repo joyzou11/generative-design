@@ -48,7 +48,6 @@ const colorPairs = [
 const cards = [];
 let nextId = 1;
 let zoomEnabled = true;
-let isSaving = false;
 let hasShownSyncWarning = false;
 
 const camera = {
@@ -243,37 +242,31 @@ function render() {
 
 async function saveQuoteToSupabase(text, author) {
   if (!supabase) return;
-  const { error } = await supabase.from(SUPABASE_TABLE).insert([
-    {
-      text,
-      author: author || null
-    }
-  ]);
+  const withTimeout = (promise, ms) =>
+    Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), ms);
+      })
+    ]);
+
+  const { error } = await withTimeout(
+    supabase.from(SUPABASE_TABLE).insert([
+      {
+        text,
+        author: author || null
+      }
+    ]),
+    4000
+  );
+
   if (error) {
     throw new Error(error.message);
   }
 }
 
-async function addCard() {
-  if (isSaving) return;
-  const value = quoteInput.value.trim();
-  if (!value) return;
-  const author = authorInput.value.trim();
-
-  isSaving = true;
-  send.disabled = true;
-  send.setAttribute('aria-busy', 'true');
-
-  try {
-    await saveQuoteToSupabase(value, author);
-  } catch (error) {
-    if (!hasShownSyncWarning) {
-      hasShownSyncWarning = true;
-      alert(`Supabase sync failed, saved locally only: ${error.message}`);
-    }
-  }
-
-  const layout = computeCardLayout(value);
+function addCardToCanvas(text, author) {
+  const layout = computeCardLayout(text);
   const pair = randomPair();
 
   // Spawn cards across depth layers to emphasize 3D space.
@@ -285,7 +278,7 @@ async function addCard() {
 
   cards.push({
     id: nextId++,
-    text: value,
+    text,
     author,
     lines: layout.lines,
     size: layout.side,
@@ -296,12 +289,79 @@ async function addCard() {
     y: centerWorld.y + jitterY - layout.side / 2
   });
 
+  render();
+}
+
+function addCard() {
+  const value = quoteInput.value.trim();
+  if (!value) return;
+  const author = authorInput.value.trim();
+
+  // Optimistic UI: always add locally first.
+  addCardToCanvas(value, author);
+
+  if (supabase) {
+    saveQuoteToSupabase(value, author).catch((error) => {
+      if (!hasShownSyncWarning) {
+        hasShownSyncWarning = true;
+        alert(`Supabase sync failed, saved locally only: ${error.message}`);
+      }
+    });
+  }
+
   quoteInput.value = '';
   authorInput.value = '';
-  render();
-  isSaving = false;
-  send.disabled = false;
-  send.removeAttribute('aria-busy');
+}
+
+async function loadQuotesFromSupabase() {
+  if (!supabase) {
+    return false;
+  }
+
+  const withTimeout = (promise, ms) =>
+    Promise.race([
+      promise,
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), ms);
+      })
+    ]);
+
+  try {
+    const { data, error } = await withTimeout(
+      supabase
+        .from(SUPABASE_TABLE)
+        .select('text, author, created_at')
+        .order('created_at', { ascending: false })
+        .limit(120),
+      4000
+    );
+
+    if (error) {
+      console.error('Failed to load quotes from Supabase:', error.message);
+      return false;
+    }
+
+    if (!data || data.length === 0) {
+      return false;
+    }
+
+    const ordered = [...data].reverse();
+    ordered.forEach((item, index) => {
+      if (!item.text) return;
+      addSeedCard(
+        {
+          text: item.text,
+          author: item.author || ''
+        },
+        index
+      );
+    });
+    render();
+    return true;
+  } catch (error) {
+    console.error('Supabase request crashed, using fallback quotes:', error);
+    return false;
+  }
 }
 
 const seedSlots = [
@@ -387,46 +447,6 @@ function zoomAt(clientX, clientY, deltaY) {
   const after = screenToWorldAtZ(clientX, clientY, 0);
   camera.x += before.x - after.x;
   camera.y += before.y - after.y;
-}
-
-async function loadQuotesFromSupabase() {
-  if (!supabase) {
-    return false;
-  }
-
-  try {
-    const { data, error } = await supabase
-      .from(SUPABASE_TABLE)
-      .select('text, author, created_at')
-      .order('created_at', { ascending: false })
-      .limit(120);
-
-    if (error) {
-      console.error('Failed to load quotes from Supabase:', error.message);
-      return false;
-    }
-
-    if (!data || data.length === 0) {
-      return false;
-    }
-
-    const ordered = [...data].reverse();
-    ordered.forEach((item, index) => {
-      if (!item.text) return;
-      addSeedCard(
-        {
-          text: item.text,
-          author: item.author || ''
-        },
-        index
-      );
-    });
-    render();
-    return true;
-  } catch (error) {
-    console.error('Supabase request crashed, using fallback quotes:', error);
-    return false;
-  }
 }
 
 send.addEventListener('click', addCard);
