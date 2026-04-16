@@ -6,8 +6,8 @@ const send = document.getElementById('send');
 const zoomToggle = document.getElementById('zoomToggle');
 const zoomStateLabel = document.getElementById('zoomStateLabel');
 
-const SUPABASE_URL = window.SUPABASE_URL || 'YOUR_SUPABASE_PROJECT_URL';
-const SUPABASE_ANON_KEY = window.SUPABASE_ANON_KEY || 'YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_URL = 'https://bpuevdwjtlxuzjsjrxrp.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_hkWfO8eRT9FWwcOotjGvOA_FqzvBpxi';
 
 const FONT_SIZE = 40;
 const FONT_WEIGHT = 700;
