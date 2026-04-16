@@ -49,6 +49,7 @@ const cards = [];
 let nextId = 1;
 let zoomEnabled = true;
 let isSaving = false;
+let hasShownSyncWarning = false;
 
 const camera = {
   x: 0,
@@ -266,11 +267,10 @@ async function addCard() {
   try {
     await saveQuoteToSupabase(value, author);
   } catch (error) {
-    alert(`Save failed: ${error.message}`);
-    isSaving = false;
-    send.disabled = false;
-    send.removeAttribute('aria-busy');
-    return;
+    if (!hasShownSyncWarning) {
+      hasShownSyncWarning = true;
+      alert(`Supabase sync failed, saved locally only: ${error.message}`);
+    }
   }
 
   const layout = computeCardLayout(value);
@@ -394,33 +394,39 @@ async function loadQuotesFromSupabase() {
     return false;
   }
 
-  const { data, error } = await supabase
-    .from(SUPABASE_TABLE)
-    .select('text, author, created_at')
-    .order('created_at', { ascending: false })
-    .limit(120);
+  try {
+    const { data, error } = await supabase
+      .from(SUPABASE_TABLE)
+      .select('text, author, created_at')
+      .order('created_at', { ascending: false })
+      .limit(120);
 
-  if (error) {
-    console.error('Failed to load quotes from Supabase:', error.message);
+    if (error) {
+      console.error('Failed to load quotes from Supabase:', error.message);
+      return false;
+    }
+
+    if (!data || data.length === 0) {
+      return false;
+    }
+
+    const ordered = [...data].reverse();
+    ordered.forEach((item, index) => {
+      if (!item.text) return;
+      addSeedCard(
+        {
+          text: item.text,
+          author: item.author || ''
+        },
+        index
+      );
+    });
+    render();
+    return true;
+  } catch (error) {
+    console.error('Supabase request crashed, using fallback quotes:', error);
     return false;
   }
-
-  if (!data || data.length === 0) {
-    return false;
-  }
-
-  const ordered = [...data].reverse();
-  ordered.forEach((item, index) => {
-    addSeedCard(
-      {
-        text: item.text,
-        author: item.author || ''
-      },
-      index
-    );
-  });
-  render();
-  return true;
 }
 
 send.addEventListener('click', addCard);
