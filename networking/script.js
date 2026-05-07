@@ -14,6 +14,13 @@ const CLIENT_KEY = "only-you-client-id";
 const UNIT = 220;
 const EXTEND_THRESHOLD = 1800;
 const HAS_REALTIME_API = window.location.protocol.startsWith("http");
+const SUPABASE_TABLE = "visitor_records";
+const SUPABASE_CONFIG = window.SUPABASE_CONFIG || {};
+const HAS_SUPABASE_API = Boolean(
+  SUPABASE_CONFIG.url &&
+    SUPABASE_CONFIG.anonKey &&
+    !SUPABASE_CONFIG.anonKey.includes("PASTE_YOUR_SUPABASE")
+);
 
 let marksBuilt = 0;
 let maxDepth = 0;
@@ -31,6 +38,7 @@ let lastPointerX = window.innerWidth / 2;
 let lastPointerY = window.innerHeight / 2;
 let previousPointerX = lastPointerX;
 let previousPointerY = lastPointerY;
+let supabaseStatsTimer = 0;
 
 const clientId = getClientId();
 const storedRecord = readRecord();
@@ -279,8 +287,26 @@ function updateData() {
   updateCursorRecords();
 }
 
+function getSupabaseHeaders(prefer) {
+  const headers = {
+    apikey: SUPABASE_CONFIG.anonKey,
+    Authorization: `Bearer ${SUPABASE_CONFIG.anonKey}`,
+    "Content-Type": "application/json",
+  };
+
+  if (prefer) {
+    headers.Prefer = prefer;
+  }
+
+  return headers;
+}
+
+function getSupabaseUrl(path, query = "") {
+  return `${SUPABASE_CONFIG.url.replace(/\/$/, "")}/rest/v1/${path}${query}`;
+}
+
 function syncRealtime(force = false) {
-  if (!HAS_REALTIME_API || !document.body.classList.contains("landing-complete") || window.scrollY < landing.offsetHeight - 1) {
+  if (!document.body.classList.contains("landing-complete") || window.scrollY < landing.offsetHeight - 1) {
     return;
   }
 
@@ -291,6 +317,16 @@ function syncRealtime(force = false) {
   }
 
   lastSyncAt = now;
+
+  if (HAS_SUPABASE_API) {
+    syncSupabaseRecord();
+    return;
+  }
+
+  if (!HAS_REALTIME_API) {
+    return;
+  }
+
   navigator.sendBeacon?.(
     "/api/record",
     new Blob([JSON.stringify(getPayload())], { type: "application/json" })
@@ -298,6 +334,24 @@ function syncRealtime(force = false) {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(getPayload()),
+    keepalive: true,
+  }).catch(() => {});
+}
+
+function syncSupabaseRecord() {
+  const payload = getPayload();
+
+  fetch(getSupabaseUrl(`${SUPABASE_TABLE}?on_conflict=client_id`), {
+    method: "POST",
+    headers: getSupabaseHeaders("resolution=merge-duplicates"),
+    body: JSON.stringify({
+      client_id: payload.clientId,
+      current_depth: payload.currentDepth,
+      max_depth: payload.maxDepth,
+      total_seconds: payload.totalSeconds,
+      visible: payload.visible,
+      updated_at: new Date().toISOString(),
+    }),
     keepalive: true,
   }).catch(() => {});
 }
@@ -313,6 +367,12 @@ function getPayload() {
 }
 
 function connectRealtime() {
+  if (HAS_SUPABASE_API) {
+    fetchSupabaseStats();
+    supabaseStatsTimer = window.setInterval(fetchSupabaseStats, 2000);
+    return;
+  }
+
   if (!HAS_REALTIME_API || !window.EventSource) {
     return;
   }
@@ -327,6 +387,49 @@ function connectRealtime() {
   events.addEventListener("error", () => {
     realtimeStats = null;
   });
+}
+
+function fetchSupabaseStats() {
+  const query = "?select=max_depth,updated_at,visible";
+
+  fetch(getSupabaseUrl(SUPABASE_TABLE, query), {
+    headers: getSupabaseHeaders(),
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Unable to fetch Supabase stats");
+      }
+
+      return response.json();
+    })
+    .then((records) => {
+      realtimeStats = buildStatsFromRecords(records);
+      updateData();
+    })
+    .catch(() => {
+      realtimeStats = null;
+    });
+}
+
+function buildStatsFromRecords(records) {
+  const now = Date.now();
+  const depthMap = new Map();
+  const recentRecords = records.filter((record) => {
+    return now - new Date(record.updated_at).getTime() < 1000 * 60 * 60 * 24 * 30;
+  });
+
+  recentRecords.forEach((record) => {
+    const level = Math.floor((Number(record.max_depth) || 0) / UNIT);
+    depthMap.set(level, (depthMap.get(level) || 0) + 1);
+  });
+
+  return {
+    totalVisitors: recentRecords.length,
+    activeVisitors: recentRecords.filter((record) => {
+      return record.visible && now - new Date(record.updated_at).getTime() < 1000 * 20;
+    }).length,
+    depthCounts: Array.from(depthMap, ([level, count]) => ({ level, count })).sort((a, b) => a.level - b.level),
+  };
 }
 
 function revealMetricsOnScroll() {
