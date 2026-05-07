@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Only You Scroll Record</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Jersey+10&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="landing-locked">
+    <section id="landing" class="landing" aria-label="Opening landing page">
+      <div id="landingStage" class="landing-stage">
+        <div id="voidField" class="void-field" aria-hidden="true"></div>
+
+        <div id="chineseLine" class="chinese-line" aria-label="法法法元无法 空空空亦非空">
+          <button class="chinese-character" type="button" aria-label="Reveal 法">法</button>
+          <button class="chinese-character" type="button" aria-label="Reveal 法">法</button>
+          <button class="chinese-character" type="button" aria-label="Reveal 法">法</button>
+          <button class="chinese-character" type="button" aria-label="Reveal 元">元</button>
+          <button class="chinese-character" type="button" aria-label="Reveal 无">无</button>
+          <button class="chinese-character" type="button" aria-label="Reveal 法">法</button>
+          <button class="chinese-character" type="button" aria-label="Reveal 空">空</button>
+          <button class="chinese-character" type="button" aria-label="Reveal 空">空</button>
+          <button class="chinese-character" type="button" aria-label="Reveal 空">空</button>
+          <button class="chinese-character" type="button" aria-label="Reveal 亦">亦</button>
+          <button class="chinese-character" type="button" aria-label="Reveal 非">非</button>
+          <button class="chinese-character" type="button" aria-label="Reveal 空">空</button>
+        </div>
+
+        <div id="landingEnglish" class="landing-english" aria-hidden="true">
+          <p>The so - called laws are ultimately lawless,</p>
+          <p>and the so - called emptiness is not truly empty.</p>
+        </div>
+
+        <div class="scroll-cue" aria-hidden="true"></div>
+      </div>
+    </section>
+
+    <aside class="metric metric-left" aria-label="Time using this website">
+      <span class="metric-label">TIME</span>
+      <span id="timeUsed" class="metric-value">00:00</span>
+    </aside>
+
+    <aside class="metric metric-right" aria-label="People who scrolled here">
+      <span class="metric-label">PEOPLE</span>
+      <span id="peopleHere" class="metric-value">1</span>
+    </aside>
+
+    <main id="scrollField" class="scroll-field">
+      <div id="cursorColumn" class="cursor-column" aria-hidden="true"></div>
+
+      <section class="only-you" aria-label="Only you">
+        <span>( ONLY YOU)</span>
+      </section>
+    </main>
+
+    <div id="exitMark" class="exit-mark" aria-hidden="true">
+      <img src="assets/vector-exit.svg" alt="" />
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>
