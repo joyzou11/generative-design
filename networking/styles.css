@@ -202,7 +202,7 @@ body.landing-complete .scroll-cue {
 
 .cursor-column {
   position: absolute;
-  top: 14vh;
+  top: 0;
   left: 50%;
   width: 18px;
   transform: translateX(-50%);
@@ -213,14 +213,10 @@ body.landing-complete .scroll-cue {
   left: 50%;
   width: 4px;
   height: 7.3px;
-  opacity: 0.12;
+  opacity: 0.72;
   transform: translateX(-50%) rotate(-38.64deg);
   transform-origin: center;
   transition: opacity 900ms cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.cursor-mark.has-record {
-  opacity: 0.72;
 }
 
 .cursor-mark img {

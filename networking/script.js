@@ -12,6 +12,7 @@ const exitMark = document.querySelector("#exitMark");
 const STORAGE_KEY = "only-you-scroll-record";
 const CLIENT_KEY = "only-you-client-id";
 const UNIT = 220;
+const PX_PER_CM = 96 / 2.54;
 const EXTEND_THRESHOLD = 1800;
 const HAS_REALTIME_API = window.location.protocol.startsWith("http");
 const SUPABASE_TABLE = "visitor_records";
@@ -29,6 +30,7 @@ let startTime = Date.now();
 let exitTimer = 0;
 let lastSyncAt = 0;
 let realtimeStats = null;
+let cursorRecordDepths = [];
 let landingSequenceStarted = false;
 let maxVoidDelay = 0;
 let targetLandingProgress = 0;
@@ -226,44 +228,32 @@ function realtimePeopleAtDepth(depth) {
   return Math.max(1, reached);
 }
 
-function buildMarksUntil(height) {
-  const targetMarks = Math.ceil(height / UNIT) + 8;
+function renderCursorRecords() {
   const fragment = document.createDocumentFragment();
+  const depths = cursorRecordDepths.length
+    ? cursorRecordDepths
+    : !HAS_SUPABASE_API && !realtimeStats
+      ? [maxDepth].filter((depth) => depth > 0)
+      : [];
 
-  for (let index = marksBuilt; index < targetMarks; index += 1) {
+  cursorColumn.innerHTML = "";
+
+  depths.forEach((depth, index) => {
     const mark = document.createElement("span");
 
     mark.className = "cursor-mark";
-    mark.dataset.level = String(index);
-    mark.style.top = `${index * UNIT}px`;
+    mark.dataset.depth = String(depth);
+    mark.style.top = `${Math.max(0, depth)}px`;
+    mark.style.opacity = `${Math.max(0.3, 0.82 - index * 0.025)}`;
     mark.innerHTML = '<img src="assets/vector-cursor.svg" alt="" />';
     fragment.appendChild(mark);
-  }
+  });
 
   cursorColumn.appendChild(fragment);
-  marksBuilt = targetMarks;
-  updateCursorRecords();
 }
 
-function updateCursorRecords() {
-  const visibleLevels = new Set();
-
-  if (realtimeStats) {
-    realtimeStats.depthCounts.forEach((item) => {
-      if (item.count > 0) {
-        visibleLevels.add(item.level);
-      }
-    });
-  } else {
-    for (let level = 0; level <= Math.floor(maxDepth / UNIT); level += 1) {
-      visibleLevels.add(level);
-    }
-  }
-
-  document.querySelectorAll(".cursor-mark").forEach((mark) => {
-    const level = Number(mark.dataset.level);
-    mark.classList.toggle("has-record", visibleLevels.has(level));
-  });
+function formatDepth(depth) {
+  return `${(depth / PX_PER_CM).toFixed(1)}cm`;
 }
 
 function extendPageIfNeeded() {
@@ -276,15 +266,14 @@ function extendPageIfNeeded() {
   const currentHeight = scrollField.offsetHeight;
   const nextHeight = currentHeight + window.innerHeight * 2.7;
   scrollField.style.minHeight = `${nextHeight}px`;
-  buildMarksUntil(nextHeight);
 }
 
 function updateData() {
   currentDepth = Math.max(0, Math.round(getMainScrollY() + window.innerHeight / 2));
   maxDepth = Math.max(maxDepth, currentDepth);
-  timeUsed.textContent = formatTime(getTotalSeconds());
+  timeUsed.textContent = formatDepth(currentDepth);
   peopleHere.textContent = realtimePeopleAtDepth(currentDepth).toLocaleString("en-US");
-  updateCursorRecords();
+  renderCursorRecords();
 }
 
 function getSupabaseHeaders(prefer) {
@@ -305,7 +294,7 @@ function getSupabaseUrl(path, query = "") {
   return `${SUPABASE_CONFIG.url.replace(/\/$/, "")}/rest/v1/${path}${query}`;
 }
 
-function syncRealtime(force = false) {
+function syncRealtime(force = false, visibleOverride) {
   if (!document.body.classList.contains("landing-complete") || window.scrollY < landing.offsetHeight - 1) {
     return;
   }
@@ -319,7 +308,7 @@ function syncRealtime(force = false) {
   lastSyncAt = now;
 
   if (HAS_SUPABASE_API) {
-    syncSupabaseRecord();
+    syncSupabaseRecord(visibleOverride);
     return;
   }
 
@@ -329,17 +318,17 @@ function syncRealtime(force = false) {
 
   navigator.sendBeacon?.(
     "/api/record",
-    new Blob([JSON.stringify(getPayload())], { type: "application/json" })
+    new Blob([JSON.stringify(getPayload(visibleOverride))], { type: "application/json" })
   ) || fetch("/api/record", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(getPayload()),
+    body: JSON.stringify(getPayload(visibleOverride)),
     keepalive: true,
   }).catch(() => {});
 }
 
-function syncSupabaseRecord() {
-  const payload = getPayload();
+function syncSupabaseRecord(visibleOverride) {
+  const payload = getPayload(visibleOverride);
 
   fetch(getSupabaseUrl(`${SUPABASE_TABLE}?on_conflict=client_id`), {
     method: "POST",
@@ -356,13 +345,13 @@ function syncSupabaseRecord() {
   }).catch(() => {});
 }
 
-function getPayload() {
+function getPayload(visibleOverride) {
   return {
     clientId,
     currentDepth,
     maxDepth,
     totalSeconds: getTotalSeconds(),
-    visible: !document.hidden,
+    visible: typeof visibleOverride === "boolean" ? visibleOverride : !document.hidden,
   };
 }
 
@@ -390,7 +379,7 @@ function connectRealtime() {
 }
 
 function fetchSupabaseStats() {
-  const query = "?select=max_depth,updated_at,visible";
+  const query = "?select=max_depth,updated_at,visible&max_depth=gt.0&order=updated_at.desc&limit=200";
 
   fetch(getSupabaseUrl(SUPABASE_TABLE, query), {
     headers: getSupabaseHeaders(),
@@ -422,6 +411,12 @@ function buildStatsFromRecords(records) {
     const level = Math.floor((Number(record.max_depth) || 0) / UNIT);
     depthMap.set(level, (depthMap.get(level) || 0) + 1);
   });
+
+  cursorRecordDepths = recentRecords
+    .filter((record) => !record.visible)
+    .map((record) => Number(record.max_depth) || 0)
+    .filter((depth) => depth > 0)
+    .sort((a, b) => a - b);
 
   return {
     totalVisitors: recentRecords.length,
@@ -484,7 +479,7 @@ chineseCharacters.forEach((character) => {
   character.addEventListener("focus", () => revealChineseCharacter(character));
 });
 
-buildMarksUntil(scrollField.offsetHeight);
+renderCursorRecords();
 connectRealtime();
 updateData();
 syncRealtime(true);
@@ -515,16 +510,16 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden) {
     showExitMark();
     writeRecord();
+    syncRealtime(true, false);
   } else {
     hideExitMarkSoon();
+    syncRealtime(true, true);
   }
-
-  syncRealtime(true);
 });
 
 window.addEventListener("beforeunload", () => {
   writeRecord();
-  syncRealtime(true);
+  syncRealtime(true, false);
 });
 
 window.setInterval(() => {
