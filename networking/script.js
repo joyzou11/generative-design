@@ -16,6 +16,7 @@ const PX_PER_CM = 96 / 2.54;
 const EXTEND_THRESHOLD = 1800;
 const HAS_REALTIME_API = window.location.protocol.startsWith("http");
 const SUPABASE_TABLE = "visitor_records";
+const SUPABASE_EXIT_TABLE = "exit_cursor_records";
 const SUPABASE_CONFIG = window.SUPABASE_CONFIG || {};
 const HAS_SUPABASE_API = Boolean(
   SUPABASE_CONFIG.url &&
@@ -41,6 +42,7 @@ let lastPointerY = window.innerHeight / 2;
 let previousPointerX = lastPointerX;
 let previousPointerY = lastPointerY;
 let supabaseStatsTimer = 0;
+let lastExitRecordAt = 0;
 
 const clientId = getClientId();
 const storedRecord = readRecord();
@@ -86,6 +88,27 @@ function writeRecord() {
       updatedAt: new Date().toISOString(),
     })
   );
+}
+
+function readLocalExitRecords() {
+  try {
+    return JSON.parse(localStorage.getItem(`${STORAGE_KEY}-exit-cursors`) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function writeLocalExitRecord(depth) {
+  const records = readLocalExitRecords();
+  const depthCm = pxToCm(depth);
+
+  records.push({
+    depth_px: depth,
+    depth_cm: depthCm,
+    created_at: new Date().toISOString(),
+  });
+
+  localStorage.setItem(`${STORAGE_KEY}-exit-cursors`, JSON.stringify(records.slice(-200)));
 }
 
 function formatTime(seconds) {
@@ -207,12 +230,7 @@ function animateLandingProgress() {
 }
 
 function simulatedPeopleAtDepth(depth) {
-  const level = Math.max(0, Math.floor(depth / UNIT));
-  const base = Math.max(1, 9842 - Math.floor(Math.pow(level, 1.42) * 37));
-  const ripple = Math.abs(Math.sin(level * 12.9898) * 183) | 0;
-  const personalTrace = depth <= maxDepth ? 1 : 0;
-
-  return Math.max(1, base + ripple + personalTrace);
+  return 1;
 }
 
 function realtimePeopleAtDepth(depth) {
@@ -232,17 +250,16 @@ function renderCursorRecords() {
   const fragment = document.createDocumentFragment();
   const depths = cursorRecordDepths.length
     ? cursorRecordDepths
-    : !HAS_SUPABASE_API && !realtimeStats
-      ? [maxDepth].filter((depth) => depth > 0)
-      : [];
+    : readLocalExitRecords().map(getExitRecordDepthPx).filter((depth) => depth > 0);
 
   cursorColumn.innerHTML = "";
 
   depths.forEach((depth, index) => {
     const mark = document.createElement("span");
+    const depthCm = pxToCm(depth);
 
     mark.className = "cursor-mark";
-    mark.dataset.depth = String(depth);
+    mark.dataset.depthCm = String(depthCm);
     mark.style.top = `${Math.max(0, depth)}px`;
     mark.style.opacity = `${Math.max(0.3, 0.82 - index * 0.025)}`;
     mark.innerHTML = '<img src="assets/vector-cursor.svg" alt="" />';
@@ -252,8 +269,24 @@ function renderCursorRecords() {
   cursorColumn.appendChild(fragment);
 }
 
+function pxToCm(depth) {
+  return Number((depth / PX_PER_CM).toFixed(2));
+}
+
+function cmToPx(depthCm) {
+  return Math.round(Number(depthCm) * PX_PER_CM);
+}
+
+function getExitRecordDepthPx(record) {
+  if (record && record.depth_cm !== undefined && record.depth_cm !== null) {
+    return cmToPx(record.depth_cm);
+  }
+
+  return Number(record?.depth_px) || 0;
+}
+
 function formatDepth(depth) {
-  return `${(depth / PX_PER_CM).toFixed(1)}cm`;
+  return `${pxToCm(depth).toFixed(1)}cm`;
 }
 
 function extendPageIfNeeded() {
@@ -358,7 +391,9 @@ function getPayload(visibleOverride) {
 function connectRealtime() {
   if (HAS_SUPABASE_API) {
     fetchSupabaseStats();
+    fetchSupabaseExitCursors();
     supabaseStatsTimer = window.setInterval(fetchSupabaseStats, 2000);
+    window.setInterval(fetchSupabaseExitCursors, 2500);
     return;
   }
 
@@ -376,6 +411,62 @@ function connectRealtime() {
   events.addEventListener("error", () => {
     realtimeStats = null;
   });
+}
+
+function recordExitCursor() {
+  const now = Date.now();
+
+  if (now - lastExitRecordAt < 1500 || currentDepth <= 0) {
+    return;
+  }
+
+  const exitDepthCm = pxToCm(currentDepth);
+
+  lastExitRecordAt = now;
+  writeLocalExitRecord(currentDepth);
+  cursorRecordDepths = readLocalExitRecords().map(getExitRecordDepthPx).filter((depth) => depth > 0);
+  renderCursorRecords();
+
+  if (!HAS_SUPABASE_API) {
+    return;
+  }
+
+  fetch(getSupabaseUrl(SUPABASE_EXIT_TABLE), {
+    method: "POST",
+    headers: getSupabaseHeaders(),
+    body: JSON.stringify({
+      client_id: clientId,
+      depth_px: currentDepth,
+      depth_cm: exitDepthCm,
+      created_at: new Date().toISOString(),
+    }),
+    keepalive: true,
+  })
+    .then(fetchSupabaseExitCursors)
+    .catch(() => {});
+}
+
+function fetchSupabaseExitCursors() {
+  const query = "?select=depth_px,depth_cm,created_at&depth_px=gt.0&order=created_at.desc&limit=200";
+
+  fetch(getSupabaseUrl(SUPABASE_EXIT_TABLE, query), {
+    headers: getSupabaseHeaders(),
+  })
+    .then((response) => {
+      if (!response.ok) {
+        throw new Error("Unable to fetch exit cursor records");
+      }
+
+      return response.json();
+    })
+    .then((records) => {
+      cursorRecordDepths = records
+        .map(getExitRecordDepthPx)
+        .filter((depth) => depth > 0)
+        .sort((a, b) => a - b);
+      renderCursorRecords();
+    })
+    .catch(() => {});
 }
 
 function fetchSupabaseStats() {
@@ -411,12 +502,6 @@ function buildStatsFromRecords(records) {
     const level = Math.floor((Number(record.max_depth) || 0) / UNIT);
     depthMap.set(level, (depthMap.get(level) || 0) + 1);
   });
-
-  cursorRecordDepths = recentRecords
-    .filter((record) => !record.visible)
-    .map((record) => Number(record.max_depth) || 0)
-    .filter((depth) => depth > 0)
-    .sort((a, b) => a - b);
 
   return {
     totalVisitors: recentRecords.length,
@@ -463,6 +548,7 @@ function showExitMark(event) {
   window.clearTimeout(exitTimer);
   exitMark.style.setProperty("--exit-angle", `${getExitAngle(event)}deg`);
   exitMark.classList.add("is-visible");
+  recordExitCursor();
 }
 
 function hideExitMarkSoon() {

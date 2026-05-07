@@ -30,3 +30,27 @@ for update
 to anon
 using (true)
 with check (true);
+
+create table if not exists public.exit_cursor_records (
+  id bigint generated always as identity primary key,
+  client_id text not null,
+  depth_px integer not null default 0,
+  depth_cm numeric not null default 0,
+  created_at timestamptz not null default now()
+);
+
+alter table public.exit_cursor_records enable row level security;
+
+drop policy if exists "exit_cursor_records_select_public" on public.exit_cursor_records;
+create policy "exit_cursor_records_select_public"
+on public.exit_cursor_records
+for select
+to anon
+using (true);
+
+drop policy if exists "exit_cursor_records_insert_public" on public.exit_cursor_records;
+create policy "exit_cursor_records_insert_public"
+on public.exit_cursor_records
+for insert
+to anon
+with check (true);

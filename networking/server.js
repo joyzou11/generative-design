@@ -85,6 +85,7 @@ function getStats() {
   const depthMap = new Map();
   const now = Date.now();
   const visitors = Object.values(records.visitors).filter((visitor) => now - visitor.updatedAt < 1000 * 60 * 60 * 24 * 30);
+  const activeVisitors = visitors.filter((visitor) => now - visitor.updatedAt < 1000 * 20 && visitor.visible);
 
   visitors.forEach((visitor) => {
     const level = Math.floor(visitor.maxDepth / 220);
@@ -93,7 +94,7 @@ function getStats() {
 
   return {
     totalVisitors: visitors.length,
-    activeVisitors: visitors.filter((visitor) => now - visitor.updatedAt < 1000 * 20 && visitor.visible).length,
+    activeVisitors: activeVisitors.length,
     depthCounts: Array.from(depthMap, ([level, count]) => ({ level, count })).sort((a, b) => a.level - b.level),
   };
 }
