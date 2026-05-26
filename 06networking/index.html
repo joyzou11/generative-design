@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Depth Record</title>
+    <link rel="stylesheet" href="styles.css?v=pt-visitor-records-1" />
+  </head>
+  <body>
+    <div class="site-shell" aria-label="Instagram mobile home background">
+      <main class="phone-frame" aria-hidden="true">
+        <div class="screen">
+          <header class="topbar">
+            <div class="status-center">Instagram</div>
+          </header>
+
+          <div id="storyRail" class="stories">
+            <div class="story add"><div class="avatar plus"></div><div class="label">001</div></div>
+            <div class="story"><div class="avatar plus"></div><div class="label">002</div></div>
+            <div class="story"><div class="avatar plus"></div><div class="label">003</div></div>
+            <div class="story"><div class="avatar plus"></div><div class="label">004</div></div>
+            <div class="story"><div class="avatar plus"></div><div class="label">005</div></div>
+          </div>
+          <div id="feedColumn" class="feed-column">
+            <article class="post">
+              <header class="post-header">
+                <div class="post-avatar"></div>
+                <div class="post-user">001</div>
+                <div class="post-more">•••</div>
+              </header>
+
+              <div class="post-media"></div>
+
+              <div class="post-actions">
+                <div class="left-actions">
+                  <button class="icon-btn like" aria-label="Like">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="23" height="20" viewBox="0 0 23 20" fill="none" aria-hidden="true">
+                      <path d="M13.002 2.42676C14.8649 0.732937 17.2779 0.459446 19.0996 1.55469C21.0143 2.70675 22.0205 5.17248 21.4326 7.53906V7.54004C20.8747 9.78771 19.5094 11.6029 17.8506 13.3975C15.8957 15.5122 13.6309 17.2977 11.2539 19.0283C8.20074 16.7958 5.32529 14.5207 3.12109 11.5801L2.67676 10.9648L2.30469 10.4072C1.47642 9.10259 0.930513 7.76852 0.901367 6.28809C0.858732 4.12604 2.0417 2.18801 3.76465 1.35742L3.93262 1.28027C5.74193 0.499061 8.00088 0.953862 9.6416 2.56152C9.96337 2.877 10.2943 3.19503 10.6641 3.55371L11.3145 4.18359L11.9404 3.53027C12.2561 3.20101 12.4912 2.93051 12.7422 2.67676L13.002 2.42676Z" fill="none" stroke="black" stroke-width="1.8"/>
+                    </svg>
+                  </button>
+                  <button class="icon-btn comment" aria-label="Comment">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M12 1.9C17.578 1.9 22.1 6.422 22.1 12C22.1 13.85 21.602 15.584 20.733 17.076L22.1 22.1L17.078 20.733C15.585 21.603 13.851 22.1 12 22.1C6.422 22.1 1.9 17.578 1.9 12C1.9 6.422 6.422 1.9 12 1.9Z" stroke="black" stroke-width="1.8" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                  <button class="icon-btn dm" aria-label="Share">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="23" height="20" viewBox="0 0 23 20" fill="none" aria-hidden="true">
+                      <path d="M7.66705 7.31168L1.68199 0.900333L18.7688 0.899836L7.66705 7.31168ZM11.1249 17.2559L8.56695 8.87036L19.667 2.45949L11.1249 17.2559Z" stroke="black" stroke-width="1.8" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
+                <div class="right-actions">
+                  <button class="icon-btn save" aria-label="Save">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <path d="M20.0996 1.90039V21.0781L12.5762 14.8086C12.2424 14.5305 11.7576 14.5305 11.4238 14.8086L3.90039 21.0781L3.90039 1.90039L20.0996 1.90039Z" stroke="black" stroke-width="1.8" stroke-linejoin="round"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="post-meta">
+                <div class="likes">100 Likes</div>
+                <div class="caption"><strong>001</strong> 000001</div>
+              </div>
+            </article>
+          </div>
+
+        </div>
+      </main>
+    </div>
+
+    <div class="scroll-surface" aria-hidden="true"></div>
+
+    <aside class="metric metric-left" aria-label="Live depth data">
+      <span class="metric-label">DEPTH</span>
+      <span id="scrollReadout" class="metric-value">0pt</span>
+    </aside>
+
+    <aside class="metric metric-right" aria-label="Live time data">
+      <span class="metric-label">TIME</span>
+      <span id="timeUsed" class="metric-value">00:00</span>
+    </aside>
+
+    <div class="people-line is-alone" aria-label="People arrival line">
+      <span><strong id="peopleHere">1</strong> <span id="peopleUnit">PERSON</span> GET HERE</span>
+    </div>
+
+    <main id="scrollField" class="scroll-field" aria-label="Scroll distance map">
+    </main>
+
+    <script src="supabase-config.js"></script>
+    <script src="script.js?v=pt-visitor-records-1"></script>
+  </body>
+</html>

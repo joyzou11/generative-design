@@ -1,0 +1,439 @@
+@font-face {
+  font-family: "GenRyuMin2";
+  src: url("assets/fonts/GenRyuMin2-R.ttc") format("truetype-collection");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "GenRyuMin2";
+  src: url("assets/fonts/GenRyuMin2-B.ttc") format("truetype-collection");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --ink: #050505;
+  --paper: #ffffff;
+  --bg: rgb(255, 255, 255);
+  --white: #ffffff;
+  --muted: #8b8f94;
+  --accent: #ff2d55;
+  --frame-bg: rgba(238, 238, 238, 0.9);
+  --feed-shift: 0px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
+  overflow-y: scroll;
+  background: var(--paper);
+}
+
+body {
+  min-height: 100%;
+  margin: 0;
+  color: var(--ink);
+  font-family: "GenRyuMin2", "Times New Roman", "Songti SC", serif;
+  letter-spacing: 0;
+  background: transparent;
+}
+
+.scroll-surface {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: transparent;
+  pointer-events: none;
+}
+
+.site-shell {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--bg);
+  color: #050505;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  pointer-events: none;
+}
+
+.phone-frame {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 10px 0 0;
+}
+
+.screen {
+  position: relative;
+  width: min(780px, calc(100vw - 48px), calc((100vh - 24px) * 402 / 874 / 0.8));
+  min-width: 0;
+  aspect-ratio: 402 / 874;
+  height: auto;
+  overflow: hidden;
+  border-radius: 54px;
+  background: var(--frame-bg);
+  opacity: 0.9;
+  box-shadow: 0 18px 54px rgba(185, 194, 203, 0.28);
+  transform: scale(0.8);
+  transform-origin: top center;
+  pointer-events: auto;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  height: 64px;
+  padding: 0 18px;
+  border-bottom: 1px solid #eeeeee;
+  background: #ffffff;
+}
+
+.status-center {
+  font-family: "Brush Script MT", "GenRyuMin2", cursive;
+  font-size: 30px;
+  font-weight: 700;
+}
+
+.stories {
+  display: flex;
+  gap: 16px;
+  overflow: hidden;
+  padding: 14px 18px 12px;
+  border-bottom: 1px solid #eeeeee;
+  background: #ffffff;
+}
+
+.story {
+  width: 74px;
+  text-align: center;
+  flex: 0 0 auto;
+}
+
+.story .avatar {
+  width: 62px;
+  height: 62px;
+  margin: 0 auto;
+  border: 5px solid #dddddd;
+  border-radius: 50%;
+  background: #e6e6e6;
+}
+
+.story.add .avatar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: transparent;
+  font-weight: 700;
+  background: #e6e6e6;
+}
+
+.label {
+  margin-top: 7px;
+  color: #222222;
+  font-size: 14px;
+}
+
+.avatar {
+  display: block;
+  border-radius: 50%;
+}
+
+.feed-column {
+  width: 100%;
+  transform: translateY(calc(var(--feed-shift) * -1));
+}
+
+.post {
+  background: #ffffff;
+}
+
+.post-header {
+  display: flex;
+  align-items: center;
+  padding: 12px 18px;
+  border-bottom: 0;
+}
+
+.post-avatar {
+  width: 42px;
+  height: 42px;
+  margin-right: 14px;
+  border-radius: 50%;
+  background: #000000;
+}
+
+.post-user {
+  color: #050505;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.post-more {
+  margin-left: auto;
+  color: #666666;
+  font-size: 22px;
+}
+
+.post-media {
+  height: clamp(360px, 56vh, 540px);
+  min-height: 360px;
+  background: var(--post-bg, #e9e9e9);
+}
+
+.post-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px 6px;
+}
+
+.left-actions,
+.right-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 32px;
+  padding: 5px;
+  border: 0;
+  color: #111111;
+  background: transparent;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.icon-btn svg {
+  display: block;
+  opacity: 1;
+  transform: scale(1);
+}
+
+.icon-btn.like svg {
+  opacity: 1;
+}
+
+.icon-btn.like path {
+  fill: none;
+  stroke: #000000;
+}
+
+.icon-btn.like.is-liked path {
+  fill: #fe0135;
+  stroke: #fe0135;
+}
+
+.post-meta {
+  padding: 0 18px 18px;
+  color: #050505;
+}
+
+.likes {
+  margin-bottom: 8px;
+  color: #050505;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.caption {
+  margin-bottom: 10px;
+  color: #050505;
+  font-size: 18px;
+}
+
+.comments-link {
+  display: block;
+  color: #8b8f94;
+  font-size: 18px;
+  text-decoration: none;
+}
+
+.metric {
+  position: fixed;
+  top: clamp(28px, 3.2vh, 42px);
+  z-index: 35;
+  display: grid;
+  gap: 3px;
+  color: #050505;
+  pointer-events: none;
+}
+
+.metric-left {
+  left: clamp(28px, 2.7vw, 44px);
+  text-align: left;
+}
+
+.metric-right {
+  right: clamp(28px, 2.7vw, 44px);
+  text-align: right;
+}
+
+.metric-label {
+  color: #050505;
+  font-family: "GenRyuMin2", "Times New Roman", "Songti SC", serif;
+  font-size: clamp(22px, 1.55vw, 28px);
+  line-height: 1.05;
+  font-weight: 700;
+}
+
+.metric-value {
+  font-family: "GenRyuMin2", "Times New Roman", "Songti SC", serif;
+  font-size: clamp(16px, 1vw, 20px);
+  line-height: 1.08;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+
+.people-line {
+  position: fixed;
+  top: 50%;
+  left: 0;
+  z-index: 32;
+  width: 100%;
+  border-top: 1.5px dashed rgba(0, 0, 0, 0.85);
+  color: #050505;
+  font-family: "GenRyuMin2", "Times New Roman", "Songti SC", serif;
+  font-size: clamp(13px, 0.98vw, 17px);
+  font-weight: 800;
+  line-height: 1;
+  text-align: center;
+  pointer-events: none;
+}
+
+.people-line.is-alone {
+  border-top-color: #fe0135;
+  color: #fe0135;
+}
+
+.people-line span {
+  display: inline-block;
+  padding: 0 8px;
+  background: var(--bg);
+  transform: translateY(-70%);
+}
+
+.scroll-field {
+  position: relative;
+  z-index: 10;
+  min-height: 26000px;
+  pointer-events: none;
+}
+
+@media (max-width: 760px) {
+  .phone-frame {
+    padding: 0;
+  }
+
+  .screen {
+    width: min(100vw - 16px, 430px);
+    min-width: 0;
+    height: calc(100vh + 80px);
+    border-radius: 32px;
+  }
+
+  .topbar {
+    height: 76px;
+    padding: 0 18px;
+  }
+
+  .status-center {
+    font-size: 30px;
+  }
+
+  .stories {
+    gap: 16px;
+    padding: 18px;
+  }
+
+  .story {
+    width: 78px;
+  }
+
+  .story .avatar {
+    width: 66px;
+    height: 66px;
+    border-width: 6px;
+  }
+
+  .label {
+    margin-top: 8px;
+    font-size: 18px;
+  }
+
+  .post-header {
+    padding: 18px;
+  }
+
+  .post-avatar {
+    width: 50px;
+    height: 50px;
+    margin-right: 18px;
+  }
+
+  .post-user,
+  .post-more {
+    font-size: 26px;
+  }
+
+  .metric-left {
+    left: 14px;
+  }
+
+  .metric-right {
+    right: 14px;
+  }
+
+  .post-media {
+    height: 56vh;
+    min-height: 360px;
+  }
+
+  .post-actions {
+    padding: 18px 18px 8px;
+  }
+
+  .icon-btn {
+    width: 40px;
+    height: 36px;
+  }
+
+  .icon-btn svg {
+    transform: scale(1.15);
+  }
+
+  .post-meta {
+    padding: 0 18px 22px;
+  }
+
+  .likes,
+  .caption {
+    font-size: 24px;
+  }
+
+  .comments-link {
+    font-size: 22px;
+  }
+
+  .people-line {
+    font-size: 12px;
+  }
+}
