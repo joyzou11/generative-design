@@ -6,15 +6,6 @@ const send = document.getElementById('send');
 const zoomToggle = document.getElementById('zoomToggle');
 const zoomStateLabel = document.getElementById('zoomStateLabel');
 
-const SUPABASE_URL = (window.__SUPABASE_URL__ || '').trim();
-const SUPABASE_ANON_KEY = (window.__SUPABASE_ANON_KEY__ || '').trim();
-const SUPABASE_TABLE = 'quotes';
-const IS_FILE_PROTOCOL = window.location.protocol === 'file:';
-const supabase =
-  !IS_FILE_PROTOCOL && window.supabase && SUPABASE_URL && SUPABASE_ANON_KEY
-    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-    : null;
-
 const FONT_SIZE = 40;
 const FONT_WEIGHT = 700;
 const FONT_FAMILY = 'Helvetica, Arial, sans-serif';
@@ -50,7 +41,6 @@ const colorPairs = [
 const cards = [];
 let nextId = 1;
 let zoomEnabled = true;
-let hasShownSyncWarning = false;
 
 const camera = {
   x: 0,
@@ -72,29 +62,6 @@ let dragState = null;
 const measureCanvas = document.createElement('canvas');
 const measureCtx = measureCanvas.getContext('2d');
 measureCtx.font = `${FONT_WEIGHT} ${FONT_SIZE}px ${FONT_FAMILY}`;
-
-const seedQuotes = [
-  { text: 'You are not a mess. You are a limited edition disaster.', author: '@unspirational' },
-  { text: 'If opportunity does not knock, maybe everyone changed their number.', author: '@unspirational' },
-  { text: 'Your comfort zone is a beautiful place to stay forever.', author: '@unspirational' },
-  { text: 'Shoot for the moon. Miss quietly.', author: '@unspirational' },
-  { text: 'Big goals, low stamina.', author: '@unspirational' },
-  { text: 'Be yourself. Unless that is not working.', author: '@unspirational' },
-  { text: 'The journey matters. The destination is still bills.', author: '@unspirational' },
-  { text: 'Keep going. Stopping is also fine.', author: '@unspirational' },
-  { text: 'Your best is enough for today and probably for tomorrow too.', author: '@unspirational' },
-  { text: 'No one has it all figured out. Especially not you.', author: '@unspirational' },
-  { text: 'Plan less. Panic more efficiently.', author: '@unspirational' },
-  { text: 'You can be anything, but not all at once.', author: '@unspirational' },
-  { text: 'Success is mostly timing and good Wi-Fi.', author: '@unspirational' },
-  { text: 'Trust the process. Question the results.', author: '@unspirational' },
-  { text: 'Nothing changes if nothing changes. So nap first.', author: '@unspirational' },
-  { text: 'Try again. Lower your expectations this time.', author: '@unspirational' },
-  { text: 'Life is short. Meetings are longer.', author: '@unspirational' },
-  { text: 'Do it scared, tired, and slightly confused.', author: '@unspirational' },
-  { text: 'Motivation is temporary. Deadlines are forever.', author: '@unspirational' },
-  { text: 'You are doing great for someone winging everything.', author: '@unspirational' }
-];
 
 function randomPair() {
   return colorPairs[Math.floor(Math.random() * colorPairs.length)];
@@ -251,31 +218,6 @@ function render() {
   canvasLayer.replaceChildren(frag);
 }
 
-async function saveQuoteToSupabase(text, author) {
-  if (!supabase) return;
-  const withTimeout = (promise, ms) =>
-    Promise.race([
-      promise,
-      new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), ms);
-      })
-    ]);
-
-  const { error } = await withTimeout(
-    supabase.from(SUPABASE_TABLE).insert([
-      {
-        text,
-        author: author || null
-      }
-    ]),
-    4000
-  );
-
-  if (error) {
-    throw new Error(error.message);
-  }
-}
-
 function addCard() {
   const value = quoteInput.value.trim();
   if (!value) return;
@@ -303,17 +245,7 @@ function addCard() {
     y: centerWorld.y + jitterY - layout.side / 2
   });
 
-  if (supabase) {
-    saveQuoteToSupabase(value, author).catch((error) => {
-      if (!hasShownSyncWarning) {
-        hasShownSyncWarning = true;
-        alert(`Sync failed, saved on screen only: ${error.message}`);
-      }
-    });
-  }
-
   quoteInput.value = '';
-  authorInput.value = '';
   render();
 }
 
@@ -384,52 +316,6 @@ function addSeedCard(item, index) {
   });
 }
 
-async function loadPersistedQuotes() {
-  if (!supabase) return;
-
-  const withTimeout = (promise, ms) =>
-    Promise.race([
-      promise,
-      new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), ms);
-      })
-    ]);
-
-  try {
-    const { data, error } = await withTimeout(
-      supabase
-        .from(SUPABASE_TABLE)
-        .select('text, author, created_at')
-        .order('created_at', { ascending: true })
-        .limit(300),
-      4000
-    );
-
-    if (error || !data || data.length === 0) return;
-
-    const seedSet = new Set(seedQuotes.map((item) => `${item.text}__${item.author || ''}`));
-    let offset = seedQuotes.length;
-    data.forEach((item) => {
-      if (!item.text) return;
-      const signature = `${item.text}__${item.author || ''}`;
-      if (seedSet.has(signature)) return;
-
-      addSeedCard(
-        {
-          text: item.text,
-          author: item.author || ''
-        },
-        offset
-      );
-      offset += 1;
-    });
-
-    render();
-  } catch (_error) {
-    // Keep Gallery behavior even when network fails.
-  }
-}
-
 function updateZoomUI() {
   zoomToggle.classList.toggle('on', zoomEnabled);
   zoomToggle.setAttribute('aria-checked', String(zoomEnabled));
@@ -447,15 +333,7 @@ function zoomAt(clientX, clientY, deltaY) {
   camera.y += before.y - after.y;
 }
 
-function submitFromComposer(event) {
-  if (event) {
-    event.preventDefault();
-    event.stopPropagation();
-  }
-  addCard();
-}
-
-send.addEventListener('click', submitFromComposer);
+send.addEventListener('click', addCard);
 quoteInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     event.preventDefault();
@@ -558,24 +436,31 @@ app.addEventListener('pointercancel', () => {
 
 window.addEventListener('resize', render);
 
-seedQuotes.forEach((item, index) => addSeedCard(item, index));
+[
+  { text: 'You are not a mess. You are a limited edition disaster.', author: '@unspirational' },
+  { text: 'If opportunity does not knock, maybe everyone changed their number.', author: '@unspirational' },
+  { text: 'Your comfort zone is a beautiful place to stay forever.', author: '@unspirational' },
+  { text: 'Shoot for the moon. Miss quietly.', author: '@unspirational' },
+  { text: 'Big goals, low stamina.', author: '@unspirational' },
+  { text: 'Be yourself. Unless that is not working.', author: '@unspirational' },
+  { text: 'The journey matters. The destination is still bills.', author: '@unspirational' },
+  { text: 'Keep going. Stopping is also fine.', author: '@unspirational' },
+  { text: 'Your best is enough for today and probably for tomorrow too.', author: '@unspirational' },
+  { text: 'No one has it all figured out. Especially not you.', author: '@unspirational' },
+  { text: 'Plan less. Panic more efficiently.', author: '@unspirational' },
+  { text: 'You can be anything, but not all at once.', author: '@unspirational' },
+  { text: 'Success is mostly timing and good Wi-Fi.', author: '@unspirational' },
+  { text: 'Trust the process. Question the results.', author: '@unspirational' },
+  { text: 'Nothing changes if nothing changes. So nap first.', author: '@unspirational' },
+  { text: 'Try again. Lower your expectations this time.', author: '@unspirational' },
+  { text: 'Life is short. Meetings are longer.', author: '@unspirational' },
+  { text: 'Do it scared, tired, and slightly confused.', author: '@unspirational' },
+  { text: 'Motivation is temporary. Deadlines are forever.', author: '@unspirational' },
+  { text: 'You are doing great for someone winging everything.', author: '@unspirational' }
+].forEach((item, index) => addSeedCard(item, index));
 
 quoteInput.value = '';
 authorInput.value = '';
 updateZoomUI();
+quoteInput.focus();
 render();
-
-function ensureSeedCardsVisible() {
-  if (cards.length > 0) return;
-  seedQuotes.forEach((item, index) => addSeedCard(item, index));
-  render();
-}
-
-setTimeout(ensureSeedCardsVisible, 120);
-loadPersistedQuotes().catch(() => {
-  ensureSeedCardsVisible();
-});
-
-window.addEventListener('error', () => {
-  ensureSeedCardsVisible();
-});

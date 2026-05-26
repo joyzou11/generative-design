@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta http-equiv="Cache-Control" content="no-store">
+    <title>Rotating Type Path</title>
+    <style>
+      body {
+        background: #fff200;
+      }
+
+      .info-wrap {
+        left: 24px;
+        position: fixed;
+        top: 24px;
+        z-index: 10;
+      }
+
+      .info-button {
+        background: transparent;
+        border: 3px solid #ff1f1f;
+        color: #ff1f1f;
+        cursor: default;
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 18px;
+        font-weight: 700;
+        letter-spacing: 0;
+        line-height: 1;
+        padding: 12px 22px;
+      }
+
+      .info-text {
+        background: #fff200;
+        border: 3px solid #ff1f1f;
+        color: #ff1f1f;
+        display: none;
+        font-family: Helvetica, Arial, sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        left: 0;
+        line-height: 1.35;
+        margin-top: 10px;
+        max-width: 620px;
+        width: 620px;
+        padding: 16px 18px;
+        position: absolute;
+        top: 100%;
+      }
+
+      .info-wrap:hover .info-text {
+        display: block;
+      }
+
+      canvas {
+        border: 0;
+        outline: none;
+      }
+
+      canvas:focus,
+      canvas:focus-visible {
+        outline: none;
+      }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.4/p5.min.js"></script>
+    <script src="sketch.js?v=20"></script>
+  </head>
+  <body>
+    <div class="info-wrap">
+      <button class="info-button" type="button">INFO</button>
+      <div class="info-text">
+        This website is an interactive typographic drawing experiment. When you type , . ! or ?, the writing direction rotates 90 degrees and creates an expanding translucent color square.
+      </div>
+    </div>
+  </body>
+</html>
